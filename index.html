@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Голосование за время встречи 06.02.2026</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .voting-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .time-option {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .time-option:hover {
+            border-color: #4CAF50;
+            background-color: #f8fff9;
+            transform: translateY(-2px);
+        }
+        
+        .time-option.selected {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+        
+        .progress-bar {
+            height: 25px;
+            background-color: #f0f0f0;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 12px;
+            transition: width 0.5s;
+        }
+        
+        .results {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+        
+        .github-link {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <a href="https://github.com/ваш-username/meeting-vote-2026" 
+       class="github-link" 
+       target="_blank">
+        ⭐ GitHub
+    </a>
+    
+    <div class="voting-card">
+        <h1 class="text-center mb-4">🗳️ Голосование за время встречи</h1>
+        <h4 class="text-center text-muted mb-4">06 февраля 2026 года | 14:00-18:00 (МСК)</h4>
+        
+        <div class="alert alert-info">
+            <strong>📢 Инструкция:</strong> Выберите удобное время (можно несколько вариантов) и введите ваше имя. 
+            Результаты сохраняются автоматически.
+        </div>
+        
+        <div class="mb-4">
+            <h5>Выберите удобное время:</h5>
+            <div id="timeOptions">
+                <!-- Опции времени будут добавлены через JavaScript -->
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <label for="voterName" class="form-label">
+                <strong>👤 Ваше имя (для уникальности голоса):</strong>
+            </label>
+            <input type="text" 
+                   class="form-control form-control-lg" 
+                   id="voterName" 
+                   placeholder="Введите ваше имя" 
+                   required>
+            <div class="form-text">Пожалуйста, используйте реальное имя для корректного учета голосов</div>
+        </div>
+        
+        <button class="btn btn-success btn-lg w-100 mb-4" onclick="submitVote()">
+            ✅ ПРОГОЛОСОВАТЬ
+        </button>
+        
+        <div class="results">
+            <h4 class="mb-4">📊 Результаты голосования</h4>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card text-center bg-light">
+                        <div class="card-body">
+                            <h5 id="totalVoters">0</h5>
+                            <p class="text-muted mb-0">Участников</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card text-center bg-light">
+                        <div class="card-body">
+                            <h5 id="totalVotes">0</h5>
+                            <p class="text-muted mb-0">Всего голосов</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="resultsContainer">
+                <!-- Результаты будут отображены здесь -->
+            </div>
+            
+            <div class="mt-4 text-center">
+                <button class="btn btn-outline-secondary" onclick="refreshResults()">
+                    🔄 Обновить результаты
+                </button>
+                <div class="mt-2">
+                    <small class="text-muted">Автоматическое обновление каждые 30 секунд</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4 text-center">
+            <small class="text-muted">
+                Ссылка для голосования: <span id="pageUrl"></span><br>
+                📅 Встреча запланирована на 6 февраля 2026 года
+            </small>
+        </div>
+    </div>
+    
+    <!-- Firebase для хранения данных -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    
+    <script>
+        // Отображаем текущий URL страницы
+        document.getElementById('pageUrl').textContent = window.location.href;
+        
+        // Варианты времени
+        const TIME_SLOTS = ["14:00", "15:00", "16:00", "17:00", "18:00"];
+        
+        // Firebase конфигурация
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4Rx3Ya7A8FfCwPJQOYq3lD4Z9VpY9XzY",
+            authDomain: "meeting-vote-2026.firebaseapp.com",
+            databaseURL: "https://meeting-vote-2026-default-rtdb.firebaseio.com",
+            projectId: "meeting-vote-2026",
+            storageBucket: "meeting-vote-2026.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef123456"
+        };
+        
+        // Инициализация Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // Создаем варианты времени
+        function createTimeOptions() {
+            const container = document.getElementById('timeOptions');
+            container.innerHTML = '';
+            
+            TIME_SLOTS.forEach(time => {
+                const div = document.createElement('div');
+                div.className = 'time-option';
+                div.innerHTML = `
+                    <input type="checkbox" class="form-check-input me-2" value="${time}" id="time${time}">
+                    <label for="time${time}" class="form-check-label fs-5">
+                        <strong>${time}</strong> (Московское время)
+                    </label>
+                `;
+                container.appendChild(div);
+                
+                // Добавляем обработчик клика
+                div.addEventListener('click', function(e) {
+                    if (e.target.type !== 'checkbox') {
+                        const checkbox = this.querySelector('input[type="checkbox"]');
+                        checkbox.checked = !checkbox.checked;
+                        this.classList.toggle('selected', checkbox.checked);
+                    }
+                });
+                
+                // Обработчик изменения checkbox
+                div.querySelector('input').addEventListener('change', function() {
+                    div.classList.toggle('selected', this.checked);
+                });
+            });
+        }
+        
+        // Отправка голоса
+        async function submitVote() {
+            const voterName = document.getElementById('voterName').value.trim();
+            if (!voterName) {
+                alert('Пожалуйста, введите ваше имя');
+                return;
+            }
+            
+            // Получаем выбранные варианты
+            const selectedTimes = [];
+            document.querySelectorAll('#timeOptions input:checked').forEach(checkbox => {
+                selectedTimes.push(checkbox.value);
+            });
+            
+            if (selectedTimes.length === 0) {
+                alert('Выберите хотя бы одно время');
+                return;
+            }
+            
+            // Проверяем, голосовал ли уже этот пользователь
+            const voterRef = database.ref('voters/' + encodeURIComponent(voterName));
+            const snapshot = await voterRef.once('value');
+            
+            if (snapshot.exists()) {
+                if (!confirm('Вы уже голосовали. Хотите изменить свой голос?')) {
+                    return;
+                }
+                
+                // Удаляем старые голоса пользователя
+                const oldVotes = snapshot.val();
+                for (const time of oldVotes) {
+                    const timeRef = database.ref('votes/' + time);
+                    const timeSnapshot = await timeRef.once('value');
+                    const currentCount = timeSnapshot.val() || 0;
+                    await timeRef.set(Math.max(0, currentCount - 1));
+                }
+            }
+            
+            // Сохраняем новые голоса
+            for (const time of selectedTimes) {
+                const timeRef = database.ref('votes/' + time);
+                const snapshot = await timeRef.once('value');
+                const currentCount = snapshot.val() || 0;
+                await timeRef.set(currentCount + 1);
+            }
+            
+            // Сохраняем информацию о голосовавшем
+            await voterRef.set(selectedTimes);
+            
+            alert('✅ Ваш голос учтён! Спасибо за участие.');
+            document.getElementById('voterName').value = '';
+            
+            // Сбрасываем выбор
+            document.querySelectorAll('#timeOptions input:checked').forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.closest('.time-option').classList.remove('selected');
+            });
+            
+            // Обновляем результаты
+            refreshResults();
+        }
+        
+        // Загрузка результатов
+        async function refreshResults() {
+            try {
+                // Загружаем голоса
+                const votesRef = database.ref('votes');
+                const votesSnapshot = await votesRef.once('value');
+                const votes = votesSnapshot.val() || {};
+                
+                // Загружаем голосовавших
+                const votersRef = database.ref('voters');
+                const votersSnapshot = await votersRef.once('value');
+                const voters = votersSnapshot.val() || {};
+                
+                // Обновляем статистику
+                const totalVoters = Object.keys(voters).length;
+                const totalVotes = Object.values(votes).reduce((sum, count) => sum + count, 0);
+                
+                document.getElementById('totalVoters').textContent = totalVoters;
+                document.getElementById('totalVotes').textContent = totalVotes;
+                
+                // Отображаем результаты по времени
+                const container = document.getElementById('resultsContainer');
+                container.innerHTML = '';
+                
+                for (const time of TIME_SLOTS) {
+                    const count = votes[time] || 0;
+                    const percentage = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'mb-3';
+                    resultDiv.innerHTML = `
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-bold">${time}</span>
+                            <span>${count} голосов (${percentage}%)</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                    `;
+                    container.appendChild(resultDiv);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки результатов:', error);
+            }
+        }
+        
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            createTimeOptions();
+            refreshResults();
+            
+            // Автоматическое обновление каждые 30 секунд
+            setInterval(refreshResults, 30000);
+        });
+    </script>
+</body>
+</html>
